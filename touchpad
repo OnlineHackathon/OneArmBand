@@ -1,0 +1,123 @@
+
+#include <LWiFi.h>
+#include <LWiFiUdp.h>
+
+char ssid[] = "HarmanHack1";  //  your network SSID (name)
+char pass[] = "developer";       // your network password
+
+unsigned int localPort = 2390;      // local port to listen for UDP packets
+
+IPAddress nodeServer(10,0,1,33); // time.nist.gov NTP server
+
+const int PACKET_SIZE = 16; // NTP time stamp is in the first 48 bytes of the message
+
+byte packetBuffer[PACKET_SIZE]; //buffer to hold incoming and outgoing packets
+//byte temp[1]; //To hold one element of the packetBuffer
+
+// A UDP instance to let us send and receive packets over UDP
+LWiFiUDP Udp;
+int pinStates[12];
+
+void setup()
+{
+  for(int i=2; i<11; i++) {
+    pinMode(i, INPUT);
+    digitalWrite(i, HIGH);
+  }
+//  pinMode(2,INPUT);
+//  digitalWrite(2,HIGH);
+  // Open serial communications and wait for port to open:
+  Serial.begin(115200);
+
+  Serial.println("setup()");
+
+  // attempt to connect to Wifi network:
+  LWiFi.begin();
+  while (!LWiFi.connectWPA(ssid, pass))
+  {
+    delay(1000);
+    Serial.println("retry WiFi AP");
+  }
+  Serial.println("Connected to wifi");
+  printWifiStatus();
+
+  delay(10000);
+
+  Serial.println("\nStarting connection to server...");
+  Udp.begin(localPort);
+
+  Serial.println("setup() done");
+}
+
+void loop()
+{
+	for(int i=2; i<11; i++) {
+		int currentState = digitalRead(i);
+		if(currentState!=pinStates[i]) {
+			sendPacket(i, currentState);
+			pinStates[i] = currentState;
+		}
+	}
+	delay(10);
+}
+
+// send an NTP request to the time server at the given address
+unsigned long sendPacket(int column, int state)
+{
+  Serial.println("Sending Packet");
+  // set all bytes in the buffer to 0
+  memset(packetBuffer, 0, PACKET_SIZE);
+
+  Udp.beginPacket(nodeServer, 33333); //NTP requests are to port 123
+  
+//  packetBuffer[0]=0x00;   // LI, Version, Mode
+//  packetBuffer[1]=254;
+  // int currentPin=2;
+  // for (int i=0; i<11; i=i+2) {
+    // packetBuffer[i]=currentPin;
+    // packetBuffer[i+1]=digitalRead(currentPin);
+    // currentPin++;
+  // }
+  
+  packetBuffer[0] = column;
+  packetBuffer[1] = state;
+  
+  Udp.write(packetBuffer, PACKET_SIZE);
+//  int i=0;
+//  for(i=0;i<3;i++){
+////    temp[0] = packetBuffer[i];
+//    Udp.write(temp[0], 1);
+//  }
+
+  Udp.endPacket();
+  
+}
+
+
+
+void printWifiStatus()
+{
+  // print the SSID of the network you're attached to:
+  Serial.print("SSID: ");
+  Serial.println(LWiFi.SSID());
+
+  // print your LWiFi shield's IP address:
+  IPAddress ip = LWiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // print the received signal strength:
+  long rssi = LWiFi.RSSI();
+  Serial.print("signal strength (RSSI):");
+  Serial.print(rssi);
+  Serial.println(" dBm");
+}
+
+
+
+
+
+
+
+
+
