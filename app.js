@@ -10,6 +10,14 @@ var note = 60;
 var datas;
 console.log('app.js running');
 
+function getOctave(){
+    var range = UpperBound-LowerBound;
+    var tmp = datas.x;
+    tmp -= LowerBound;
+    //console.log("testdat:", range, tmp);
+    return Math.ceil(3 * (tmp / range));
+}
+
 // Send MIDI note
 function sendNote(note) {
     output.sendMessage([144,note,100]);
@@ -27,19 +35,32 @@ myMyo.on('connected', function (evt) {
 // Play a note when orientation changes
 myMyo.on('orientation', function(data) {
 	datas = data;
-	console.log(new Date(), 'gyroscope',
-                data.x,
-                Math.ceil(data.y));
-    note = 60 + data.y * 67;
+	/*console.log(new Date(), 'gyroscope',
+                data.x);*/
+    note = 60 + (data.x) * 67;
     if(note > 127){
         note = 127;   
     }
-    sendNote(note); 
+    //sendNote(note); 
 });
 
 // Play a note when fist
+var UpperBound = -1;
+var LowerBound = -1;
+var state = 0;
 myMyo.on('fist', function(edge) {
     if(edge){
+        if(state == 0){
+            LowerBound = datas.x;
+            state = 1;
+            console.log("LOWER BOUND: " + LowerBound);
+        }else if(state == 1){
+            UpperBound = datas.x;
+            state = 2;
+            console.log("UPPER BOUND: " + UpperBound);
+        }
+    }
+  /*  if(edge){
         console.log(new Date(), 'fist', edge);
         console.log(new Date(), 'gyroscope',
                 datas.x,
@@ -49,7 +70,8 @@ myMyo.on('fist', function(edge) {
             note = 127;
         }
         sendNote(note); 
-    }
+    }*/
+
 });
 
 // Other events
@@ -60,6 +82,33 @@ myMyo.on('thumb_to_pinky', function(edge){
 myMyo.on('double_tap', function (edge) {
     console.log(new Date(), 'double_tap', edge);
 });
+// UDP
+var PORT = 33333;
+var HOST = '10.0.1.51';
+
+var dgram = require('dgram');
+var server = dgram.createSocket('udp4');
+
+server.on('listening', function () {
+    var address = server.address();
+    console.log('UDP Server listening on ' + address.address + ":" + address.port);
+});
+
+server.on('message', function (message, remote) {
+
+    if(message[1] == 1){
+    console.log(typeof message);
+    console.log(remote.address + ':' + remote.port +' - Column: ' + message[0] +' - State: ' + message[1]);
+    
+
+    var play = 12 * getOctave() + message[0] + 60;
+    console.log("Playing: "  + play);
+    sendNote(play);
+    }
+});
+
+server.bind(PORT, HOST);
+
 
 // DEBUGGING:
 
@@ -70,4 +119,6 @@ var printp = function() {
         console.log(input.getPortName(i));
     }
 }
+
+
 
