@@ -1,6 +1,7 @@
 var Myo = require('myo');
 var sleep = require('sleep');
 var midi = require('midi');
+var HashMap = require('hashmap');
 
 // Initialize
 var myMyo = Myo.create();
@@ -8,11 +9,12 @@ var output = new midi.output();
 output.openPort(0);
 var note = 60;
 var datas;
+var keyMap = new HashMap();
 console.log('app.js running');
 
 function getOctave(){
     var range = UpperBound-LowerBound;
-    var tmp = datas.x;
+    var tmp = datas.z;
     tmp -= LowerBound;
     //console.log("testdat:", range, tmp);
     return Math.ceil(3 * (tmp / range));
@@ -21,9 +23,10 @@ function getOctave(){
 // Send MIDI note
 function sendNote(note) {
     output.sendMessage([144,note,100]);
-	setTimeout(function(note) {
-	    output.sendMessage([128,note,100]);
-    }, 100, note);
+}
+
+function closeNote(note){
+    output.sendMessage([128,note,100]);
 }
 
 // Unlock the MYO when connected
@@ -51,11 +54,11 @@ var state = 0;
 myMyo.on('fist', function(edge) {
     if(edge){
         if(state == 0){
-            LowerBound = datas.x;
+            LowerBound = datas.z;
             state = 1;
             console.log("LOWER BOUND: " + LowerBound);
         }else if(state == 1){
-            UpperBound = datas.x;
+            UpperBound = datas.z;
             state = 2;
             console.log("UPPER BOUND: " + UpperBound);
         }
@@ -96,14 +99,16 @@ server.on('listening', function () {
 
 server.on('message', function (message, remote) {
 
-    if(message[1] == 1){
-    console.log(typeof message);
-    console.log(remote.address + ':' + remote.port +' - Column: ' + message[0] +' - State: ' + message[1]);
-    
+    if(message[1] == 0){
 
-    var play = 12 * getOctave() + message[0] + 60;
+    var play = 8 * getOctave() + message[0] + 60;
     console.log("Playing: "  + play);
+    keyMap.set(message[0], play);
     sendNote(play);
+    }else if(message[1] == 1){
+        console.log("Closing", keyMap.get(message[0]));
+        closeNote(keyMap.get(message[0]));
+        keyMap.remove(message[0]);
     }
 });
 
