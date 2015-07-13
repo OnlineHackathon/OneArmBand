@@ -7,7 +7,7 @@ char pass[] = "developer";       // your network password
 
 unsigned int localPort = 2390;      // local port to listen for UDP packets
 
-IPAddress nodeServer(10,0,1,33); // time.nist.gov NTP server
+IPAddress nodeServer(10,0,1,55); // time.nist.gov NTP server
 
 const int PACKET_SIZE = 16; // NTP time stamp is in the first 48 bytes of the message
 
@@ -16,14 +16,21 @@ byte packetBuffer[PACKET_SIZE]; //buffer to hold incoming and outgoing packets
 
 // A UDP instance to let us send and receive packets over UDP
 LWiFiUDP Udp;
-int pinStates[12];
-
+int pinStates[16]; 
+int sensorPins[3];
+int voltpin=12;
 void setup()
 {
+  pinMode(voltpin, OUTPUT);
+  
   for(int i=2; i<11; i++) {
-    pinMode(i, INPUT);
+    pinMode(i, INPUT);0
     digitalWrite(i, HIGH);
   }
+  sensorPins[0] = A0;
+  sensorPins[1] = A1;
+  sensorPins[2] = A2;
+  
 //  pinMode(2,INPUT);
 //  digitalWrite(2,HIGH);
   // Open serial communications and wait for port to open:
@@ -58,6 +65,21 @@ void loop()
 			pinStates[i] = currentState;
 		}
 	}
+
+        for (int i=0; i<3; i++) {
+          int analogState;
+          int analogValue = analogRead(sensorPins[i]);
+          if(analogValue > 50){
+            analogState = 0; // high or low
+          }else{
+            analogState = 1;
+          }
+         
+          if(analogState != pinStates[i+11]) {
+           sendPacket(i+10, analogState);
+           pinStates[i+11] = analogState;
+          }
+        }
 	delay(10);
 }
 
