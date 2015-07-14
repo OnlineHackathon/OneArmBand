@@ -3,10 +3,20 @@ var sleep = require('sleep');
 var midi = require('midi');
 var HashMap = require('hashmap');
 
+
+var printp = function() {
+    console.log("====== new section =======")
+    for(var i = 0; i < output.getPortCount(); i++) {
+        console.log(output.getPortName(i));
+    }
+}
+
+
 // Initialize
 var myMyo = Myo.create();
 var output = new midi.output();
 output.openPort(0);
+printp();
 var note = 60;
 var datas;
 var keyMap = new HashMap();
@@ -14,7 +24,7 @@ console.log('app.js running');
 
 function getOctave(){
     var range = UpperBound-LowerBound;
-    var tmp = datas.z;
+    var tmp = datas.y;
     tmp -= LowerBound;
     //console.log("testdat:", range, tmp);
     return Math.ceil(3 * (tmp / range));
@@ -38,9 +48,9 @@ myMyo.on('connected', function (evt) {
 // Play a note when orientation changes
 myMyo.on('orientation', function(data) {
 	datas = data;
-	/*console.log(new Date(), 'gyroscope',
-                data.x);*/
-    note = 60 + (data.x) * 67;
+	if(state != 2) console.log(new Date(), 'gyroscope',
+                data.y);
+    note = -10 + (data.y) * 67;
     if(note > 127){
         note = 127;   
     }
@@ -54,11 +64,11 @@ var state = 0;
 myMyo.on('fist', function(edge) {
     if(edge){
         if(state == 0){
-            LowerBound = datas.z;
+            LowerBound = datas.y;
             state = 1;
             console.log("LOWER BOUND: " + LowerBound);
         }else if(state == 1){
-            UpperBound = datas.z;
+            UpperBound = datas.y;
             state = 2;
             console.log("UPPER BOUND: " + UpperBound);
         }
@@ -87,7 +97,7 @@ myMyo.on('double_tap', function (edge) {
 });
 // UDP
 var PORT = 33333;
-var HOST = '10.0.1.51';
+var HOST = '10.0.1.55';
 
 var dgram = require('dgram');
 var server = dgram.createSocket('udp4');
@@ -101,7 +111,7 @@ server.on('message', function (message, remote) {
 
     if(message[1] == 0){
 
-    var play = 8 * getOctave() + message[0] + 60;
+    var play = 8 * getOctave() + message[0] + 30;
     console.log("Playing: "  + play);
     keyMap.set(message[0], play);
     sendNote(play);
@@ -118,12 +128,5 @@ server.bind(PORT, HOST);
 // DEBUGGING:
 
 // Print the Ports open
-var printp = function() {
-    console.log("====== new section =======")
-    for(var i = 0; i < input.getPortCount(); i++) {
-        console.log(input.getPortName(i));
-    }
-}
-
 
 
