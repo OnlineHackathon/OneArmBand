@@ -1,1 +1,1 @@
-the ge file in .txt format
+the new ge file in .txt format
